@@ -158,6 +158,36 @@ function showAbout() {
     $("#viewTitle").text("À propos...");
     $("#aboutContainer").show();
 }
+///////////////////////////////////////////////////////////////Account Creation / modification / connexion///////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+function showSignInForm() {
+    showForm();
+    $("#viewTitle").text("Inscription");
+    renderRegisterForm();
+}
+function showLogInForm() {
+    showForm();
+    $("#viewTitle").text("Connexion");
+    renderLoginForm();
+}
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////Account Creation / modification / connexion///////////////////////////////////////////
 
 //////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
 
@@ -275,6 +305,11 @@ function updateDropDownMenu() {
     let DDMenu = $("#DDMenu");
     let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
     DDMenu.empty();
+    DDMenu.append($(`
+        <div class="dropdown-item menuItemLayout" id="connexion">
+            <i class="fa fa-sign-in fa mx-2"></i> Connexion
+        </div>
+        `));
 
     DDMenu.append($(`
         <div class="dropdown-item menuItemLayout" id="allCatCmd">
@@ -312,6 +347,9 @@ function updateDropDownMenu() {
         selectedCategory = $(this).text().trim();
         await showPosts(true);
         updateDropDownMenu();
+    });
+    $('#connexion').on("click", async function () {
+        showLogInForm();
     });
 }
 function attach_Posts_UI_Events_Callback() {
@@ -595,4 +633,254 @@ async function renderError(message) {
             </fieldset>
         `)
     );
+}
+function renderLoginForm() {
+    noTimeout();
+    showForm();
+    $("#viewTitle").text("Connexion");
+    updateDropDownMenu();
+    
+    $("#form").show();
+    $("#form").empty();
+    $("#form").append(`
+        <form class="form" id="loginForm">
+            <fieldset>
+                <legend>Connexion</legend>
+                
+                <label for="Email" class="form-label">Courriel</label>
+                <input 
+                    type="email" 
+                    class="form-control Email"
+                    id="Email" 
+                    name="Email"
+                    placeholder="Entrez votre courriel"
+                    required
+                    RequireMessage="Veuillez entrer un courriel"
+                    InvalidMessage="Courriel invalide"
+                />
+                
+                <label for="Password" class="form-label">Mot de passe</label>
+                <input 
+                    type="password" 
+                    class="form-control"
+                    id="Password" 
+                    name="Password"
+                    placeholder="Entrez votre mot de passe"
+                    required
+                    RequireMessage="Veuillez entrer un mot de passe"
+                />
+                
+                <div style="text-align: center; margin-top: 10px;">
+                    <a href="#" id="registerLink" style="color: #007bff; text-decoration: none;">
+                        Créer un compte
+                    </a>
+                </div>
+                
+                <input type="submit" value="Se connecter" id="saveLogin" class="btn btn-primary displayNone">
+            </fieldset>
+        </form>
+    `);
+    
+    // Initialiser la validation
+    initFormValidation();
+    
+    // Gérer le clic sur le bouton commit
+    $("#commit").click(function () {
+        $("#commit").off();
+        return $('#saveLogin').trigger("click");
+    });
+    
+    // Soumettre le formulaire
+    $('#loginForm').on("submit", async function (event) {
+        event.preventDefault();
+        
+        // Récupérer les données du formulaire
+        let loginData = getFormData($("#loginForm"));
+
+            if (!Posts_API.error) {
+                let user = loginData;
+                
+                // Vérifier si l'usager est vérifié
+                if (!user.VerifyCode || user.VerifyCode === "verified") {
+                    // Sauvegarder le token et les infos usager
+                    sessionStorage.setItem("bearerToken", user.Access_token);
+                    sessionStorage.setItem("user", JSON.stringify(user));
+                    
+                    // Initialiser le timeout de session
+                    initTimeout(600, renderLoginForm); // 10 minutes
+                    
+                    // Rediriger vers le fil de nouvelles
+                    await showPosts();
+                } else {
+                    // Usager non vérifié - demander le code de vérification
+                    renderVerifyForm(user);
+                }
+            } else {
+                // Gérer les différentes erreurs selon le statut HTTP
+                handleLoginError(Posts_API.currentStatus);
+            }
+    });
+    
+    // Lien vers le formulaire d'inscription
+    $("#registerLink").on("click", function(e) {
+        e.preventDefault();
+        renderRegisterForm();
+    });
+    
+    // Bouton annuler - retourner à l'accueil
+    $('#cancel').on("click", async function () {
+        await showPosts();
+    });
+}
+
+// Fonction pour gérer les erreurs de connexion
+function handleLoginError(statusCode) {
+    let errorMessage = "";
+    
+    switch(statusCode) {
+        case 404:
+            errorMessage = "Courriel d'utilisateur introuvable";
+            break;
+        case 401:
+            errorMessage = "Mot de passe incorrect";
+            break;
+        case 403:
+            errorMessage = "Compte bloqué par l'administrateur";
+            break;
+        case 500:
+            errorMessage = "Erreur du serveur. Veuillez réessayer plus tard.";
+            break;
+        default:
+            errorMessage = "Erreur de connexion. Veuillez réessayer.";
+    }
+    
+    showError(errorMessage);
+}
+function renderRegisterForm() {
+    noTimeout();
+    $("#form").empty();
+    $("#form").append(`
+        <form class="form" id="registerForm">
+            <fieldset>
+                <legend>Créer un compte</legend>
+                
+                <label for="Email" class="form-label">Courriel</label>
+                <input 
+                    type="email" 
+                    class="form-control Email"
+                    id="Email" 
+                    name="Email"
+                    placeholder="Courriel"
+                    required
+                    RequireMessage="Veuillez entrer un courriel"
+                    InvalidMessage="Courriel invalide"
+                />
+                
+                <label for="EmailVerify" class="form-label">Vérification du courriel</label>
+                <input 
+                    type="email" 
+                    class="form-control MatchedInput"
+                    id="EmailVerify" 
+                    name="EmailVerify"
+                    matchedInputId="Email"
+                    placeholder="Confirmez le courriel"
+                    required
+                    RequireMessage="Veuillez confirmer le courriel"
+                    InvalidMessage="Les courriels ne correspondent pas"
+                />
+                
+                <label for="Password" class="form-label">Mot de passe (6 caractères minimum)</label>
+                <input 
+                    type="password" 
+                    class="form-control"
+                    id="Password" 
+                    name="Password"
+                    placeholder="Mot de passe"
+                    required
+                    RequireMessage="Veuillez entrer un mot de passe"
+                    InvalidMessage="Le mot de passe doit contenir au moins 6 caractères"
+                />
+                
+                <label for="PasswordVerify" class="form-label">Vérification du mot de passe</label>
+                <input 
+                    type="password" 
+                    class="form-control MatchedInput"
+                    id="PasswordVerify" 
+                    name="PasswordVerify"
+                    matchedInputId="Password"
+                    placeholder="Confirmez le mot de passe"
+                    required
+                    RequireMessage="Veuillez confirmer le mot de passe"
+                    InvalidMessage="Les mots de passe ne correspondent pas"
+                />
+                
+                <label for="Name" class="form-label">Nom</label>
+                <input 
+                    type="text" 
+                    class="form-control Alpha"
+                    id="Name" 
+                    name="Name"
+                    placeholder="Nom complet"
+                    required
+                    RequireMessage="Veuillez entrer votre nom"
+                />
+                
+                <label class="form-label">Avatar</label>
+                <div class='imageUploaderContainer'>
+                    <div class='imageUploader' 
+                         newImage='true' 
+                         controlId='Avatar' 
+                         imageSrc='news-logo-upload.png' 
+                         waitingImage="Loading_icon.gif">
+                    </div>
+                </div>
+                
+                <input type="submit" value="Enregistrer" id="saveRegister" class="btn btn-primary displayNone">
+            </fieldset>
+        </form>
+    `);
+    
+    // Initialiser les contrôles d'image et la validation
+    initImageUploaders();
+    initFormValidation();
+    
+    // Validation de conflit pour le courriel (vérifier si déjà utilisé)
+    // Vous devrez ajouter l'endpoint approprié dans Posts_API
+    // addConflictValidation(Posts_API.CHECK_EMAIL_URL(), "Email", "saveRegister");
+    
+    // Gérer le clic sur le bouton commit
+    $("#commit").click(function () {
+        $("#commit").off();
+        return $('#saveRegister').trigger("click");
+    });
+    
+    // Soumettre le formulaire
+    $('#registerForm').on("submit", async function (event) {
+        event.preventDefault();
+        
+        // Récupérer les données du formulaire (automatiquement nettoyées par getFormData)
+        let userData = getFormData($("#registerForm"));
+        
+        // Supprimer les champs de vérification avant l'envoi
+        delete userData.EmailVerify;
+        delete userData.PasswordVerify;
+    
+
+            
+            if (!Posts_API.error) {
+                showError("Compte créé avec succès! Vérifiez vos courriels pour confirmer votre compte.");
+                setTimeout(() => {
+                    renderLoginForm();
+                }, 2000);
+            } else {
+                if (Posts_API.currentStatus === 409) {
+                    showError("Ce courriel est déjà utilisé");
+                } else {
+                    showError(Posts_API.currentHttpError);
+                }
+            }
+    });
+    $('#cancel').on("click", async function () {
+        showLogInForm();
+    });
 }
