@@ -476,7 +476,6 @@ async function renderDeletePostForm(id) {
                 </div>
             `);
             linefeeds_to_Html_br(".postText");
-            // attach form buttons click event callback
             $('#commit').on("click", async function () {
                 await Posts_API.Delete(post.Id);
                 if (!Posts_API.error) {
@@ -564,7 +563,7 @@ function renderPostForm(post = null) {
     if (create) $("#keepDateControl").hide();
 
     initImageUploaders();
-    initFormValidation(); // important do to after all html injection!
+    initFormValidation();
 
     $("#commit").click(function () {
         $("#commit").off();
@@ -591,10 +590,10 @@ function renderPostForm(post = null) {
     });
 }
 function getFormData($form) {
-    // prevent html injections
+
     const removeTag = new RegExp("(<[a-zA-Z0-9]+>)|(</[a-zA-Z0-9]+>)", "g");
     var jsonObject = {};
-    // grab data from all controls
+
     $.each($form.serializeArray(), (index, control) => {
         jsonObject[control.name] = control.value.replace(removeTag, "");
     });
@@ -636,8 +635,6 @@ async function renderError(message) {
 }
 function renderLoginForm() {
     noTimeout();
-    showForm();
-    $("#viewTitle").text("Connexion");
     updateDropDownMenu();
     
     $("#form").show();
@@ -680,60 +677,52 @@ function renderLoginForm() {
             </fieldset>
         </form>
     `);
-    
-    // Initialiser la validation
+
     initFormValidation();
-    
-    // Gérer le clic sur le bouton commit
+
     $("#commit").click(function () {
         $("#commit").off();
         return $('#saveLogin').trigger("click");
     });
-    
-    // Soumettre le formulaire
+
     $('#loginForm').on("submit", async function (event) {
         event.preventDefault();
         
-        // Récupérer les données du formulaire
         let loginData = getFormData($("#loginForm"));
-
+        
+        try {
+            let response = await Posts_API.login(loginData.Email, loginData.Password);
+            
             if (!Posts_API.error) {
-                let user = loginData;
+                let user = response.data;
                 
-                // Vérifier si l'usager est vérifié
                 if (!user.VerifyCode || user.VerifyCode === "verified") {
-                    // Sauvegarder le token et les infos usager
                     sessionStorage.setItem("bearerToken", user.Access_token);
                     sessionStorage.setItem("user", JSON.stringify(user));
                     
-                    // Initialiser le timeout de session
-                    initTimeout(600, renderLoginForm); // 10 minutes
+                    initTimeout(600, renderLoginForm);
                     
-                    // Rediriger vers le fil de nouvelles
                     await showPosts();
                 } else {
-                    // Usager non vérifié - demander le code de vérification
                     renderVerifyForm(user);
                 }
             } else {
-                // Gérer les différentes erreurs selon le statut HTTP
                 handleLoginError(Posts_API.currentStatus);
             }
+        } catch (error) {
+            showError("Le serveur ne répond pas. Veuillez réessayer plus tard.");
+        }
     });
-    
-    // Lien vers le formulaire d'inscription
+
     $("#registerLink").on("click", function(e) {
         e.preventDefault();
-        renderRegisterForm();
+        showSignInForm();
     });
-    
-    // Bouton annuler - retourner à l'accueil
+
     $('#cancel').on("click", async function () {
         await showPosts();
     });
 }
-
-// Fonction pour gérer les erreurs de connexion
 function handleLoginError(statusCode) {
     let errorMessage = "";
     
@@ -758,6 +747,7 @@ function handleLoginError(statusCode) {
 }
 function renderRegisterForm() {
     noTimeout();
+    $("#form").show();
     $("#form").empty();
     $("#form").append(`
         <form class="form" id="registerForm">
@@ -839,33 +829,25 @@ function renderRegisterForm() {
             </fieldset>
         </form>
     `);
-    
-    // Initialiser les contrôles d'image et la validation
+
     initImageUploaders();
     initFormValidation();
     
-    // Validation de conflit pour le courriel (vérifier si déjà utilisé)
-    // Vous devrez ajouter l'endpoint approprié dans Posts_API
-    // addConflictValidation(Posts_API.CHECK_EMAIL_URL(), "Email", "saveRegister");
-    
-    // Gérer le clic sur le bouton commit
     $("#commit").click(function () {
         $("#commit").off();
         return $('#saveRegister').trigger("click");
     });
     
-    // Soumettre le formulaire
     $('#registerForm').on("submit", async function (event) {
         event.preventDefault();
         
-        // Récupérer les données du formulaire (automatiquement nettoyées par getFormData)
         let userData = getFormData($("#registerForm"));
         
-        // Supprimer les champs de vérification avant l'envoi
         delete userData.EmailVerify;
         delete userData.PasswordVerify;
-    
-
+        
+        try {
+            let response = await Posts_API.register(userData);
             
             if (!Posts_API.error) {
                 showError("Compte créé avec succès! Vérifiez vos courriels pour confirmer votre compte.");
@@ -879,7 +861,11 @@ function renderRegisterForm() {
                     showError(Posts_API.currentHttpError);
                 }
             }
+        } catch (error) {
+            showError("Le serveur ne répond pas. Veuillez réessayer plus tard.");
+        }
     });
+    
     $('#cancel').on("click", async function () {
         showLogInForm();
     });
