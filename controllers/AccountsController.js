@@ -8,7 +8,7 @@ import AccessControl from '../accessControl.js';
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
-        super(HttpContext, new Repository(new UserModel()), AccessControl.admin());
+        super(HttpContext, new Repository(new UserModel()));
     }
     // POST: /token body payload[{"Email": "...", "Password": "..."}]
     login(loginInfo) {

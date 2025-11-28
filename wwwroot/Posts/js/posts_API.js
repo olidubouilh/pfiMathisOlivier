@@ -96,12 +96,15 @@ class Posts_API {
         this.initHttpState();
         return new Promise(resolve => {
             $.ajax({
-                url: this.ACCOUNTS_API_URL() + "/login",
+                url: this.ACCOUNTS_API_URL() + "/login", // Vérifie que c'est bien la route login
                 type: "POST",
                 contentType: 'application/json',
-                data: JSON.stringify({ Email: email, Password: password }),
+                data: JSON.stringify({ Email: email, Password: password }), // juste ce que le backend attend
                 success: (data) => { resolve({ data: data }); },
-                error: (xhr) => { Posts_API.setHttpErrorState(xhr); resolve(null); }
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }

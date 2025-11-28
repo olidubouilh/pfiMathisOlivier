@@ -188,6 +188,66 @@ function showLogInForm() {
 
 
 ///////////////////////////////////////////////////////////////Account Creation / modification / connexion///////////////////////////////////////////
+async function register() {
+    // Vérification que les éléments existent
+    const $email = $("#Email");
+    const $emailVerify = $("#EmailVerify");
+    const $password = $("#Password");
+    const $passwordVerify = $("#PasswordVerify");
+    const $name = $("#Name");
+
+    if (!$email.length || !$emailVerify.length || !$password.length || !$passwordVerify.length || !$name.length) {
+        popupMessage("Le formulaire n'est pas encore prêt.");
+        return;
+    }
+
+    let email = $email.val().trim();
+    let emailVerify = $emailVerify.val().trim();
+    let password = $password.val().trim();
+    let passwordVerify = $passwordVerify.val().trim();
+    let name = $name.val().trim();
+
+    // Validation simple
+    if (!email || !emailVerify || !password || !passwordVerify || !name) {
+        popupMessage("Veuillez remplir tous les champs.");
+        return;
+    }
+
+    if (email !== emailVerify) {
+        popupMessage("Les courriels ne correspondent pas.");
+        return;
+    }
+
+    if (password !== passwordVerify) {
+        popupMessage("Les mots de passe ne correspondent pas.");
+        return;
+    }
+
+    let user = {
+        Name: name,
+        Email: email,
+        Password: password,
+        Avatar: "news-logo-upload.png",
+        Created: new Date().toISOString(),
+        VerifyCode: "verified",
+        Authorizations: []
+};
+
+
+    try {
+        let response = await Posts_API.register(user);
+
+        if (!Posts_API.error) {
+            popupMessage("Inscription réussie !");
+            showLogInForm(); // redirection automatique vers connexion
+        } else {
+            popupMessage(Posts_API.currentHttpError);
+        }
+    } catch (err) {
+        popupMessage("Erreur serveur, veuillez réessayer plus tard.");
+        console.error(err);
+    }
+}
 
 //////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
 
@@ -386,7 +446,7 @@ function attach_Posts_UI_Events_Callback() {
 function addWaitingGif() {
     clearTimeout(waiting);
     waiting = setTimeout(() => {
-        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Loading_icon.gif' /></div>'"));
+        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Loading_icon.gif' /></div>"));
     }, waitingGifTrigger)
 }
 function removeWaitingGif() {
@@ -685,34 +745,41 @@ function renderLoginForm() {
         return $('#saveLogin').trigger("click");
     });
 
-    $('#loginForm').on("submit", async function (event) {
-        event.preventDefault();
+$('#loginForm').on("submit", async function (event) {
+event.preventDefault();
+
+let email = $("#Email").val().trim();
+let password = $("#Password").val().trim();
+
+if (!email || !password) {
+    popupMessage("Veuillez remplir tous les champs.");
+    return;
+}
+
+try {
+    let response = await Posts_API.login(email, password);
+    
+    if (!Posts_API.error) {
+        let user = response.data;
         
-        let loginData = getFormData($("#loginForm"));
-        
-        try {
-            let response = await Posts_API.login(loginData.Email, loginData.Password);
+        if (!user.VerifyCode || user.VerifyCode === "verified") {
+            sessionStorage.setItem("bearerToken", user.Access_token);
+            sessionStorage.setItem("user", JSON.stringify(user));
             
-            if (!Posts_API.error) {
-                let user = response.data;
-                
-                if (!user.VerifyCode || user.VerifyCode === "verified") {
-                    sessionStorage.setItem("bearerToken", user.Access_token);
-                    sessionStorage.setItem("user", JSON.stringify(user));
-                    
-                    initTimeout(600, renderLoginForm);
-                    
-                    await showPosts();
-                } else {
-                    renderVerifyForm(user);
-                }
-            } else {
-                handleLoginError(Posts_API.currentStatus);
-            }
-        } catch (error) {
-            showError("Le serveur ne répond pas. Veuillez réessayer plus tard.");
+            initTimeout(600, renderLoginForm);
+            
+            await showPosts();
+        } else {
+            renderVerifyForm(user);
         }
-    });
+    } else {
+        handleLoginError(Posts_API.currentStatus);
+    }
+} catch (error) {
+    showError("Le serveur ne répond pas. Veuillez réessayer plus tard.");
+}
+
+});
 
     $("#registerLink").on("click", function(e) {
         e.preventDefault();
@@ -833,10 +900,10 @@ function renderRegisterForm() {
     initImageUploaders();
     initFormValidation();
     
-    $("#commit").click(function () {
-        $("#commit").off();
-        return $('#saveRegister').trigger("click");
-    });
+    $('#commit').off();
+    $('#commit').on("click", async function () {
+    await register();
+});
     
     $('#registerForm').on("submit", async function (event) {
         event.preventDefault();

@@ -76,5 +76,15 @@
         },
         "VerifyCode": "verified",
         "Id": "f11ee960-aa82-11ef-b942-e7f097a2ee7a"
+    },
+    {
+        "Id": "ca4739e0-cc79-11f0-8c7a-351b0d2986dd",
+        "Name": "ccc",
+        "Email": "michquidortlost@gmail.com",
+        "Password": "123456",
+        "Avatar": "news-logo-upload.png",
+        "Created": 2025,
+        "VerifyCode": "verified",
+        "Authorizations": []
     }
 ]
